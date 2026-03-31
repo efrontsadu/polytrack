@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: polytrack-server
+    env: node
+    buildCommand: npm install && npm run server-build && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
