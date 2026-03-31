@@ -5,18 +5,18 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// Only needed for ES Module compatibility; can remove if using CommonJS
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app: Express = express();
-const server =I can see the issue! Your Render deployment is failing because **the server directory is missing the required `package.json` file** (and probably `tsconfig.json`). The build process can http.createServer(app);
+const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../../')));
 
-// Types
 interface Player {
   id: string;
   name: string;
@@ -32,11 +32,9 @@ interface Game {
   created: number;
 }
 
-// Storage
 const games = new Map<string, Game>();
 const playerToGame = new Map<string, string>();
 
-// Utility Functions
 function generateId(): string {
   return Math.random().toString(36).substr(2, 9);
 }
@@ -73,7 +71,7 @@ function getGameStats(gameId: string): any {
   };
 }
 
-// WebSocket Connection Handler
+// WebSocket logic
 wss.on('connection', (ws: WebSocket) => {
   let playerId: string | null = null;
   let gameId: string | null = null;
@@ -112,7 +110,6 @@ wss.on('connection', (ws: WebSocket) => {
             message: 'Game created successfully'
           }));
 
-          console.log(`[CREATE_GAME] Created game ${gameId} with host ${playerId}`);
           break;
         }
 
@@ -172,13 +169,10 @@ wss.on('connection', (ws: WebSocket) => {
           broadcast(gameId, {
             type: 'player_joined',
             playerId,
-            player't find dependencies or compilation configuration.
-
-Let me create the missing files for you:Name: newPlayer.name,
+            playerName: newPlayer.name,
             position: newPlayer.position
           });
 
-          console.log(`[JOIN_GAME] Player ${playerId} joined game ${gameId}`);
           break;
         }
 
@@ -231,7 +225,6 @@ Let me create the missing files for you:Name: newPlayer.name,
         }
       }
     } catch (error) {
-      console.error('Error handling message:', error);
       ws.send(JSON.stringify({
         type: 'error',
         message: 'Invalid message format'
@@ -250,19 +243,17 @@ Let me create the missing files for you:Name: newPlayer.name,
 
     if (game.players.size === 0) {
       games.delete(gameId);
-      console.log(`[DISCONNECT] Game ${gameId} deleted (no players left)`);
     } else {
       broadcast(gameId, {
         type: 'player_left',
         playerId,
         message: `Player left`
       });
-      console.log(`[DISCONNECT] Player ${playerId} left game ${gameId}`);
     }
   });
 
   ws.on('error', (error) => {
-    console.error('WebSocket error:', error);
+    // Just prevent crashes from bad connections
   });
 });
 
@@ -308,20 +299,12 @@ app.get('/api/game/:gameId', (req: Request, res: Response) => {
   });
 });
 
-// Serve game files
+// Serve game files (optional, only if you want to expose the frontend under the same server)
 app.get('/', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../../index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`
-╔═══════════════════════════════════════╗
-║   PolyTrack Multiplayer Server        ║
-║   Server running on port ${PORT}       ║
-║   WebSocket ready for connections     ║
-╚═══════════════════════════════════════╝
-  `);
+  console.log(`PolyTrack multiplayer server started on port ${PORT}`);
 });
-
-export { app, server, wss };
