@@ -3,11 +3,11 @@ import http from 'http';
 import WebSocket from 'ws';
 import cors from 'cors';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-// Only needed for ES Module compatibility; can remove if using CommonJS
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// __dirname compatibility for both CommonJS and ES Modules
+const __dirname = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(new URL(import.meta.url).pathname);
 
 const app: Express = express();
 const server = http.createServer(app);
@@ -15,6 +15,7 @@ const wss = new WebSocket.Server({ server });
 
 app.use(cors());
 app.use(express.json());
+// Adjust path to static depending on your project layout. Here, serving root at up-two-levels.
 app.use(express.static(path.join(__dirname, '../../')));
 
 interface Player {
@@ -71,7 +72,6 @@ function getGameStats(gameId: string): any {
   };
 }
 
-// WebSocket logic
 wss.on('connection', (ws: WebSocket) => {
   let playerId: string | null = null;
   let gameId: string | null = null;
@@ -81,9 +81,12 @@ wss.on('connection', (ws: WebSocket) => {
       const data = JSON.parse(message);
 
       switch (data.type) {
+
         case 'create_game': {
-          gameId = generateId();
-          playerId = generateId();
+          const assignedGameId = generateId();
+          const assignedPlayerId = generateId();
+          playerId = assignedPlayerId;
+          gameId = assignedGameId;
 
           const player: Player = {
             id: playerId,
@@ -118,22 +121,17 @@ wss.on('connection', (ws: WebSocket) => {
           const game = games.get(targetGameId);
 
           if (!game) {
-            ws.send(JSON.stringify({
-              type: 'error',
-              message: 'Game not found'
-            }));
+            ws.send(JSON.stringify({ type: 'error', message: 'Game not found' }));
             break;
           }
 
           if (game.players.size >= 4) {
-            ws.send(JSON.stringify({
-              type: 'error',
-              message: 'Game is full (max 4 players)'
-            }));
+            ws.send(JSON.stringify({ type: 'error', message: 'Game is full (max 4 players)' }));
             break;
           }
 
-          playerId = generateId();
+          const assignedPlayerId = generateId();
+          playerId = assignedPlayerId;
           gameId = targetGameId;
 
           const newPlayer: Player = {
@@ -147,7 +145,7 @@ wss.on('connection', (ws: WebSocket) => {
           game.players.set(playerId, newPlayer);
           playerToGame.set(playerId, gameId);
 
-          // Send current players to new player
+          // Send existing players to new player, exclude self
           const existingPlayers = Array.from(game.players.values())
             .filter(p => p.id !== playerId)
             .map(p => ({
@@ -165,23 +163,19 @@ wss.on('connection', (ws: WebSocket) => {
             message: 'Successfully joined game'
           }));
 
-          // Notify others
           broadcast(gameId, {
             type: 'player_joined',
             playerId,
             playerName: newPlayer.name,
             position: newPlayer.position
-          });
-
+          }, playerId);
           break;
         }
 
         case 'move': {
           if (!gameId || !playerId) break;
-
           const game = games.get(gameId);
           if (!game) break;
-
           const player = game.players.get(playerId);
           if (player) {
             player.position = data.position;
@@ -224,23 +218,17 @@ wss.on('connection', (ws: WebSocket) => {
           break;
         }
       }
-    } catch (error) {
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: 'Invalid message format'
-      }));
+    } catch {
+      ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
     }
   });
 
   ws.on('close', () => {
     if (!playerId || !gameId) return;
-
     const game = games.get(gameId);
     if (!game) return;
-
     game.players.delete(playerId);
     playerToGame.delete(playerId);
-
     if (game.players.size === 0) {
       games.delete(gameId);
     } else {
@@ -252,13 +240,11 @@ wss.on('connection', (ws: WebSocket) => {
     }
   });
 
-  ws.on('error', (error) => {
-    // Just prevent crashes from bad connections
-  });
+  ws.on('error', () => { /* handle error, but don't crash */ });
 });
 
 // REST API endpoints
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -267,7 +253,7 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-app.get('/api/games', (req: Request, res: Response) => {
+app.get('/api/games', (_req: Request, res: Response) => {
   const gamesList = Array.from(games.values()).map(game => ({
     gameId: game.id,
     playerCount: game.players.size,
@@ -275,32 +261,19 @@ app.get('/api/games', (req: Request, res: Response) => {
     created: game.created
   }));
 
-  res.json({
-    success: true,
-    games: gamesList,
-    totalGames: gamesList.length
-  });
+  res.json({ success: true, games: gamesList, totalGames: gamesList.length });
 });
 
 app.get('/api/game/:gameId', (req: Request, res: Response) => {
   const game = games.get(req.params.gameId);
-
   if (!game) {
-    return res.status(404).json({
-      success: false,
-      error: 'Game not found'
-    });
+    return res.status(404).json({ success: false, error: 'Game not found' });
   }
-
   const stats = getGameStats(req.params.gameId);
-  res.json({
-    success: true,
-    data: stats
-  });
+  res.json({ success: true, data: stats });
 });
 
-// Serve game files (optional, only if you want to expose the frontend under the same server)
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../../index.html'));
 });
 
