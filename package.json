@@ -1,12 +1,24 @@
 {
   "productName": "PolyTrack",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
-  "main": "electron/main.js",
+  "main": "dist/server/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node dist/server/index.js",
+    "dev": "ts-node server/index.ts",
+    "build": "tsc && webpack --mode=production",
+    "watch": "webpack --watch --mode=development",
+    "lint": "eslint",
+    "server-build": "tsc"
+  },
   "devDependencies": {
     "@electron/packager": "^18.3.3",
-    "@types/pako": "^0.2.0",
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.0.0",
+    "@types/pako": "^2.0.0",
     "@types/three": "^0.166.0",
+    "@types/ws": "^8.5.4",
     "copy-webpack-plugin": "^12.0.2",
     "css-loader": "^7.1.1",
     "electron": "^31.2.1",
@@ -14,21 +26,18 @@
     "globals": "^15.3.0",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.4.2",
+    "ts-node": "^10.9.1",
     "typescript": "^5.4.5",
     "typescript-eslint": "^7.12.0",
     "webpack": "^5.76.2",
     "webpack-cli": "^5.0.1"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
     "js-sha256": "^0.11.0",
     "pako": "^2.1.0",
-    "three": "^0.166.1"
-  },
-  "scripts": {
-    "lint": "eslint",
-    "watch": "webpack --watch --mode=development",
-    "build": "webpack --mode=production",
-    "prebuild-electron": "SET TARGET=electron && webpack --mode=production",
-    "build-electron": "node electron/build.js"
+    "three": "^0.166.1",
+    "ws": "^8.13.0"
   }
 }
