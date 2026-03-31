@@ -21,5 +21,12 @@
   },
   "engines": {
     "node": "18.x"
-  }
+  },
+  "scripts": {
+  "lint": "eslint",
+  "watch": "webpack --watch --mode=development",
+  "build": "echo \"Skipping frontend webpack build (using prebuilt bundles)\"",
+  "prebuild-electron": "SET TARGET=electron && webpack --mode=production",
+  "build-electron": "node electron/build.js"
+}
 }
